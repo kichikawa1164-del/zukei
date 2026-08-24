@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>4次元超立方体（テッセラクト）の正しい回転</title>
+<style>
+body {
+background-color: #11141a;
+color: #fff;
+margin: 0;
+overflow: auto; 
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+min-height: 100vh;
+padding: 20px;
+box-sizing: border-box;
+font-family: sans-serif;
+}
+canvas {
+background-color: #161a24;
+box-shadow: 0 0 20px rgba(0,0,0,0.5);
+border-radius: 10px;
+}
+#info {
+margin-top: 15px;
+color: #0000ff;
+font-size: 18px;
+font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<!-- 外枠のサイズだけを 1000x1000 に広げました -->
+<canvas id="cubeCanvas" width="1000" height="1000"></canvas>
+<div id="info">4次元空間での回転（内側と外側の反転）</div>
+
+<script>
+const canvas = document.getElementById('cubeCanvas');
+const ctx = canvas.getContext('2d');
+
+// 4次元超立方体の16個の頂点座標 (X, Y, Z, W)
+const vertices = [];
+for (let x of [-1, 1]) {
+for (let y of [-1, 1]) {
+for (let z of [-1, 1]) {
+for (let w of [-1, 1]) {
+vertices.push([x, y, z, w]);
+}
+}
+}
+}
+
+// 16個の頂点を繋ぐ「32本の辺」のペア
+const edges = [];
+for (let i = 0; i < 16; i++) {
+for (let j = i + 1; j < 16; j++) {
+let diff = 0;
+for (let k = 0; k < 4; k++) {
+if (vertices[i][k] !== vertices[j][k]) diff++;
+}
+if (diff === 1) {
+edges.push([i, j]);
+}
+}
+}
+
+let angle = 0;
+
+function animate() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+angle += 0.015;
+
+const cos = Math.cos(angle);
+const sin = Math.sin(angle);
+
+const projectedVertices = vertices.map(v => {
+let x = v[0];
+let y = v[1];
+let z = v[2];
+let w = v[3];
+
+let xRot1 = x * Math.cos(0.4) - z * Math.sin(0.4);
+let zRot1 = x * Math.sin(0.4) + z * Math.cos(0.4);
+
+let yRot1 = y * Math.cos(0.3) - zRot1 * Math.sin(0.3);
+let zRot2 = y * Math.sin(0.3) + zRot1 * Math.cos(0.3);
+
+let x4d = xRot1 * cos - w * sin;
+let w4d = xRot1 * sin + w * cos;
+
+const distance4D = 2.0;
+const factor = 1 / (distance4D - w4d);
+
+const x3d = x4d * factor;
+const y3d = yRot1 * factor;
+
+// 元コードと同じ倍率「300」のまま、中心位置だけ広くなったキャンバスに合わせています
+const screenX = canvas.width / 2 + x3d * 175;
+const screenY = canvas.height / 2 + y3d * 175;
+
+return [screenX, screenY];
+});
+
+// 32本の辺（ワイヤーフレーム）を描画
+ctx.lineWidth = 2.5;
+edges.forEach(edge => {
+const p1 = projectedVertices[edge[0]];
+const p2 = projectedVertices[edge[1]];
+
+// 線のグラデーション（青色）
+let gradient = ctx.createLinearGradient(p1[0], p1[1], p2[0], p2[1]);
+gradient.addColorStop(0, '#0000ff');
+gradient.addColorStop(1, '#0000ff');
+
+ctx.strokeStyle = gradient;
+ctx.beginPath();
+ctx.moveTo(p1[0], p1[1]);
+ctx.lineTo(p2[0], p2[1]);
+ctx.stroke();
+});
+
+// 16個の頂点（カド）に白い丸を描く
+projectedVertices.forEach(p => {
+ctx.fillStyle = '#fff';
+ctx.beginPath();
+ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
+ctx.fill();
+});
+
+requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>

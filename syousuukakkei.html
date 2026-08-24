@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラフル正 n 角形 シミュレーター</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f5f5f7;
+            color: #333;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .input-container {
+            margin-bottom: 20px;
+            font-size: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        input[type="number"] {
+            width: 120px;
+            padding: 10px;
+            font-size: 18px;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        .info-box {
+            font-size: 16px;
+            margin-bottom: 15px;
+            background-color: #f2f2f7;
+            padding: 12px;
+            border-radius: 8px;
+            display: inline-block;
+            min-width: 250px;
+        }
+        .info-box p {
+            margin: 6px 0;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .alert {
+            color: #d70015;
+            font-size: 14px;
+            height: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        button {
+            width: 100%;
+            max-width: 200px;
+            padding: 12px;
+            background-color: #34c759; /* カラフルに合わせて緑色に */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #2ebd54;
+        }
+        .canvas-container {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+        }
+        canvas {
+            background-color: #1c1c1e; /* カラフルな色が映えるようにダーク背景にしました */
+            border: 1px solid #3a3a3c;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>正 n 角形 シミュレーター</h1>
+    <div class="subtitle">カラフル・ダークモードバージョン</div>
+
+    <div class="input-container">
+        <span>正</span>
+        <input type="number" id="decimal-input" step="0.0001" min="2.0001" value="2.5" oninput="processInput()">
+        <span>角形</span>
+    </div>
+
+    <div class="info-box">
+        <p><span id="polygon-label" class="bold">正 2.5 角形</span></p>
+        <p>内部の分数: <span id="fraction-label" class="bold">5 / 2</span></p>
+        <p>頂点: <span id="vertex-count" class="bold">5</span> 個</p>
+    </div>
+
+    <div class="alert" id="error-msg"></div>
+
+    <button onclick="drawPolygon()">作成</button>
+
+    <div class="canvas-container">
+        <canvas id="polygonCanvas" width="400" height="400"></canvas>
+    </div>
+</div>
+
+<script>
+function decimalToFraction(val) {
+    const tolerance = 1.0e-6;
+    let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
+    let b = val;
+    do {
+        let a = Math.floor(b);
+        let aux = h1; h1 = a * h1 + h2; h2 = aux;
+        aux = k1; k1 = a * k1 + k2; k2 = aux;
+        b = 1 / (b - a);
+    } while (Math.abs(val - h1 / k1) > val * tolerance);
+
+    return { n: h1, m: k1 };
+}
+
+let globalN = 5;
+let globalM = 2;
+
+function processInput() {
+    const inputVal = parseFloat(document.getElementById('decimal-input').value);
+    const errorMsg = document.getElementById('error-msg');
+    const polygonLabel = document.getElementById('polygon-label');
+    const fractionLabel = document.getElementById('fraction-label');
+    const vertexCount = document.getElementById('vertex-count');
+
+    if (isNaN(inputVal) || inputVal <= 2) {
+        errorMsg.innerText = "2より大きな有理数を入力してください";
+        polygonLabel.innerText = "正 - 角形";
+        fractionLabel.innerText = "- / -";
+        vertexCount.innerText = "-";
+        return false;
+    }
+
+    errorMsg.innerText = "";
+    polygonLabel.innerText = `正 ${inputVal} 角形`;
+
+    const frac = decimalToFraction(inputVal);
+    globalN = frac.n;
+    globalM = frac.m;
+
+    fractionLabel.innerText = `${globalN} / ${globalM}`;
+    vertexCount.innerText = globalN;
+    return true;
+}
+
+function drawPolygon() {
+    if (!processInput()) return;
+
+    const canvas = document.getElementById('polygonCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 160;
+
+    const vertices = [];
+    for (let i = 0; i < globalN; i++) {
+        const angle = (2 * Math.PI * i / globalN) - Math.PI / 2;
+        vertices.push({
+            x: centerX + radius * Math.cos(angle),
+            y: centerY + radius * Math.sin(angle)
+        });
+    }
+
+    // 外周の薄い円（ダーク背景に合わせて少し明るいグレーに）
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#3a3a3c';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const visited = new Array(globalN).fill(false);
+    
+    // 全体のステップ数をカウントして、色を滑らかに変えるための変数
+    let stepCount = 0;
+    const totalLines = globalN; 
+
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+
+    for (let start = 0; start < globalN; start++) {
+        if (visited[start]) continue;
+
+        let current = start;
+
+        do {
+            visited[current] = true;
+            const next = (current + globalM) % globalN;
+
+            // 1本の線ごとに色（色相：Hue）を変化させる
+            // HSLカラーを使って、0〜360度で虹色を表現します
+            const hue = (stepCount / totalLines) * 360;
+            ctx.beginPath();
+            ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+            
+            ctx.moveTo(vertices[current].x, vertices[current].y);
+            ctx.lineTo(vertices[next].x, vertices[next].y);
+            ctx.stroke();
+
+            current = next;
+            stepCount++;
+        } while (current !== start);
+    }
+
+    // 頂点のポッチ
+    if (globalN <= 120) {
+        for (let i = 0; i < globalN; i++) {
+            ctx.beginPath();
+            ctx.arc(vertices[i].x, vertices[i].y, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff'; 
+            ctx.fill();
+        }
+    }
+}
+
+window.onload = function() {
+    processInput();
+    drawPolygon();
+};
+</script>
+
+</body>
+</html>

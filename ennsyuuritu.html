@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正多角形で挟む円周率計算・視覚化</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f7;
+            color: #333;
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        @media (min-width: 600px) {
+            .container {
+                flex-direction: row;
+            }
+        }
+        .panel {
+            flex: 1;
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0077ed;
+        }
+        .result {
+            margin-top: 24px;
+            padding: 16px;
+            background-color: #f2f2f7;
+            border-radius: 8px;
+        }
+        .result p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+        .highlight {
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .blue { color: #0055ff; }
+        .red { color: #ff3333; }
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        canvas {
+            background-color: #fafafa;
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+<h1>正N角形で挟む円周率の可視化</h1>
+
+<div class="container">
+    <!-- 左側：操作パネル -->
+    <div class="panel">
+        <div class="input-group">
+            <label for="edges">角数 N （3 〜 100程度が見やすいです）:</label>
+            <input type="number" id="edges" min="3" value="6">
+        </div>
+        
+        <button onclick="updateAll()">計算して図形を描画</button>
+        
+        <div class="result" id="result-box">
+            <p>【<span class="blue">■</span> 内接 $N$ 角形の周 → 下限】</p>
+            <p class="highlight blue" id="lower-bound">-</p>
+            
+            <p>【<span class="red">■</span> 外接 $N$ 角形の周 → 上限】</p>
+            <p class="highlight red" id="upper-bound">-</p>
+            
+            <p style="margin-top: 15px; font-weight: bold;">はさみうちの不等式：</p>
+            <p style="text-align: center; font-size: 18px; font-family: monospace;" id="inequality">-</p>
+        </div>
+    </div>
+
+    <!-- 右側：図形描画パネル -->
+    <div class="panel canvas-container">
+        <canvas id="piCanvas" width="400" height="400"></canvas>
+    </div>
+</div>
+
+<script>
+function updateAll() {
+    const N = parseInt(document.getElementById('edges').value);
+    
+    if (isNaN(N) || N < 3) {
+        alert('3以上の整数を入力してください。');
+        return;
+    }
+
+    // --- 1. 円周率の計算 ---
+    const angle = Math.PI / N;
+    const lower = N * Math.sin(angle);
+    const upper = N * Math.tan(angle);
+    
+    document.getElementById('lower-bound').innerText = lower.toFixed(15);
+    document.getElementById('upper-bound').innerText = upper.toFixed(15);
+    document.getElementById('inequality').innerText = `${lower.toFixed(5)} < π < ${upper.toFixed(5)}`;
+    
+    // --- 2. 図形の描画 ---
+    const canvas = document.getElementById('piCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // キャンバスの初期化
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 130; // 基準となる円の半径（ピクセル）
+
+    // 背景の円（黒の点線）
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#999999';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]); // 点線リセット
+
+    // A. 外接正N角形の描画（赤色）
+    // 外接多角形の頂点までの距離は、中心から radius / cos(π/N) となる
+    const outerRadius = radius / Math.cos(angle);
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+        // 頂点を少し回転させて真上（-Math.PI/2）を基準にする
+        const currentAngle = (2 * Math.PI * i / N) - Math.PI / 2;
+        const x = centerX + outerRadius * Math.cos(currentAngle);
+        const y = centerY + outerRadius * Math.sin(currentAngle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#ff3333';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // B. 内接正N角形の描画（青色）
+    // 内接多角形の頂点までの距離は、円の半径と同じ radius
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+        const currentAngle = (2 * Math.PI * i / N) - Math.PI / 2;
+        const x = centerX + radius * Math.cos(currentAngle);
+        const y = centerY + radius * Math.sin(currentAngle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#0055ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+// 起動時に初期描画（N=6）を行う
+window.onload = updateAll;
+</script>
+
+</body>
+</html>
