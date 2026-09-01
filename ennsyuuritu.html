@@ -146,8 +146,8 @@ function updateAll() {
     const lower = N * Math.sin(angle);
     const upper = N * Math.tan(angle);
     
-    document.getElementById('lower-bound').innerText = lower.toFixed(30);
-    document.getElementById('upper-bound').innerText = upper.toFixed(30);
+    document.getElementById('lower-bound').innerText = lower.toFixed(45);
+    document.getElementById('upper-bound').innerText = upper.toFixed(45);
     document.getElementById('inequality').innerText = `${lower.toFixed(5)} < π < ${upper.toFixed(5)}`;
     
     // --- 2. 図形の描画 ---
